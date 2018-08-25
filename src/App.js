@@ -1,11 +1,9 @@
 import React, { Component } from 'react';
 import he from 'he';
 import * as _ from 'lodash';
+import "tabler-react/dist/Tabler.css";
+import { Page, Grid, Card, Container } from 'tabler-react/dist';
 
-/*
-const url = 'https://hacker-news.firebaseio.com/v0/topstories.json';
-const itemUrl = 'https://hacker-news.firebaseio.com/v0/item';
-*/
 const newsUrl = 'https://api.hnpwa.com/v0/news'
 const itemUrl = 'https://api.hnpwa.com/v0/item'
 
@@ -14,7 +12,7 @@ const pattern = /\b(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9]{11})\b/gi
 
 export class App extends Component {
   state = {
-    page: 1,
+    page: 7,
     items: [],
   }
 
@@ -23,16 +21,18 @@ export class App extends Component {
       .flatten()
       .map(it => ({
         ...it,
+        title: it.type === 'comment' ? item.title : it.title,
         content: he.decode(it.content)
       }))
       .filter(it => pattern.test(it.content))
-      .flatMap(it => 
+      .flatMap(it =>
         (it.content.match(pattern) || []).map(videoUrl => ({
           ...it,
           videoId: videoUrl.match(new RegExp(pattern, 'i'))[1]
         }))
       )
       .uniqBy('videoId')
+      .orderBy('time')
       .value()
 
   fetchItem({ id }) {
@@ -58,22 +58,38 @@ export class App extends Component {
 
   render() {
     return (
-      <div>
+      <Page>
+      <Page.Title>HackerTube</Page.Title>
+      <Page.Main>
+      <Container>
       {
         this.state.items.map(item => (
-          <div key={item.id}>
+          <Grid.Row cards gutters='md'>
+          <Grid.Col width={6}>
+          <Card
+            key={item.videoId}
+            title={item.title}
+          >
+            <Card.Body>
             <iframe
               type='text/html'
               src={`https://youtube.com/embed/${item.videoId}`}
               title={item.videoId}
+              width='100%'
+              height='320'
               frameBorder='0'
-              allowfullscreen
+              allowfullscreen='allowfullscreen'
             >
             </iframe>
-          </div>
+            </Card.Body>
+          </Card>
+          </Grid.Col>
+          </Grid.Row>
         ))
       }
-      </div>
+      </Container>
+      </Page.Main>
+      </Page>
     );
   }
 }
