@@ -9,20 +9,30 @@ const itemUrl = 'https://hacker-news.firebaseio.com/v0/item';
 const newsUrl = 'https://api.hnpwa.com/v0/news'
 const itemUrl = 'https://api.hnpwa.com/v0/item'
 
-const pattern = /\b(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9]{11})\b/gi
+const pattern = /\b(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9]{11})\b/gim
+
 
 export class App extends Component {
   state = {
     page: 1,
-    videoUrls: [],
+    items: [],
   }
 
-  videoPosts = ({ content = '', comments = [] }) =>
-    _([content]).concat(...comments.map(this.videoPosts))
-      .map(he.decode)
-      .flatMap(post => post.match(pattern))
-      .compact()
-      .uniq()
+  videoPosts = (item) =>
+    _([item, ...item.comments.map(this.videoPosts)])
+      .flatten()
+      .map(it => ({
+        ...it,
+        content: he.decode(it.content)
+      }))
+      .filter(it => pattern.test(it.content))
+      .flatMap(it => 
+        (it.content.match(pattern) || []).map(videoUrl => ({
+          ...it,
+          videoId: videoUrl.match(new RegExp(pattern, 'i'))[1]
+        }))
+      )
+      .uniqBy('videoId')
       .value()
 
   fetchItem({ id }) {
@@ -34,12 +44,12 @@ export class App extends Component {
   componentDidMount() {
     fetch(`${newsUrl}/${this.state.page}.json`)
       .then(res => res.json())
-      .then((items = []) => {
-        items.forEach(async item => {
-          const itemUrls = await this.fetchItem(item);
-          if (itemUrls.length) {
-            this.setState(({ videoUrls }) => ({
-              videoUrls: [ ...videoUrls, ...itemUrls ]
+      .then((fetchedItems = []) => {
+        fetchedItems.forEach(async item => {
+          const videoItems = await this.fetchItem(item);
+          if (videoItems.length) {
+            this.setState(({ items }) => ({
+              items: [...items, ...videoItems]
             }));
           }
         })
@@ -47,14 +57,19 @@ export class App extends Component {
   }
 
   render() {
-    const { videoUrls } = this.state;
-
     return (
       <div>
       {
-        videoUrls.map(url => (
-          <div key={url}>
-            <iframe type='text/html' src={`https://${url}`} title={url} frameBorder='0'></iframe>
+        this.state.items.map(item => (
+          <div key={item.id}>
+            <iframe
+              type='text/html'
+              src={`https://youtube.com/embed/${item.videoId}`}
+              title={item.videoId}
+              frameBorder='0'
+              allowfullscreen
+            >
+            </iframe>
           </div>
         ))
       }
