@@ -50,7 +50,7 @@ export class App extends Component {
           const videoItems = await this.fetchItem(item);
           if (videoItems.length) {
             this.setState(({ items }) => ({
-              items: [...items, ...videoItems]
+              items: _.uniqBy([...items, ...videoItems], 'videoId'),
             }));
           }
         });
